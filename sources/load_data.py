@@ -4,6 +4,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 
+from sklearn.utils import shuffle
 from tensorflow import keras
 
 target = {'Normal': 0,
@@ -101,83 +102,13 @@ def timeseries_dataset(pollutants: list,
     test_x = np.concatenate(test_x, axis=0)
     test_y = np.concatenate(test_y, axis=0)
 
+    train_x, train_y = shuffle(train_x, train_y)
+    valid_x, valid_y = shuffle(valid_x, valid_y)
+    test_x, test_y = shuffle(test_x, test_y)
 
-    ## List comprehension version for data set ##
-    # train_x = [data[x][:] for x in data.keys()]
-    # train_x = np.concatenate(train_x, axis=0)
-    # train_y = [classes[x][:int(len(classes[x]) * tr_rate)] for x in classes.keys()]
-    # train_y = np.concatenate(train_y, axis=0)
-    # valid_x = [data[x][int(len(data[x]) * tr_rate):int(len(data[x])*tr_rate)+int(len(data[x])*va_rate)] for x in data.keys()]
-    # valid_x = np.concatenate(valid_x, axis=0)
-    # valid_y = [classes[x][int(len(data[x]) * tr_rate):int(len(data[x])*tr_rate)+int(len(data[x])*va_rate)] for x in classes.keys()]
-    # valid_y = np.concatenate(valid_y, axis=0)
-    # test_x = [data[x][int(len(data[x])*tr_rate)+int(len(data[x])*va_rate):] for x in data.keys()]
-    # test_x = np.concatenate(test_x, axis=0)
-    # test_y = [classes[x][int(len(data[x])*tr_rate)+int(len(data[x])*va_rate):] for x in classes.keys()]
-    # test_y = np.concatenate(test_y, axis=0)
-
-    # return data, classes, train_x, train_y, valid_x, valid_y, test_x, test_y
-
-    # num_train_set = int(data_sets.shape[0] * train_rate)
-    # num_valid_set = int(data_sets.shape[0] * valid_rate)
-    # num_test_set = data_sets.shape[0] - (num_train_set + num_valid_set)
-    #
-    # print(f'Pollutant: {pollutant}')
-    # print(f'the number of frames: num_train_set {num_train_set}, num_valid_set {num_valid_set}, num_test_set {num_test_set}')
-    #
-    # sequence_length = duration * 4
-    # targets = np.full(len(data_sets), target[pollutant])
-    #
-    train_dataset = keras.utils.timeseries_dataset_from_array(
-        train_x,
-        targets=train_y,
-        sequence_length=0,
-        shuffle=True,
-        batch_size=batch_size,
-        start_index=0
-    )
-
-    # valid_dataset = keras.utils.timeseries_dataset_from_array(
-    #     data_sets,
-    #     targets=targets,
-    #     sequence_length=sequence_length,
-    #     shuffle=True,
-    #     batch_size=batch_size,
-    #     start_index=num_train_set,
-    #     end_index=num_train_set+num_valid_set
-    # )
-    #
-    # test_dataset = keras.utils.timeseries_dataset_from_array(
-    #     data_sets,
-    #     targets=targets,
-    #     sequence_length=sequence_length,
-    #     shuffle=True,
-    #     batch_size=batch_size,
-    #     start_index=num_train_set + num_valid_set
-    # )
-    #
-
-    return train_dataset#, valid_dataset, test_dataset
+    return train_x, train_y, valid_x, valid_y, test_x, test_y
 
 
 if __name__ == '__main__':
-    train_dataset = timeseries_dataset(['Formaldehyde_0_1_ppm', 'Benzen_0_1_ppm'])
-    # data, classes, train_x, train_y, valid_x, valid_y, test_x, test_y = timeseries_dataset(['Formaldehyde_0_1_ppm', 'Benzen_0_1_ppm'])
+    train_x, train_y, valid_x, valid_y, test_x, test_y = timeseries_dataset(['Formaldehyde_0_1_ppm', 'Benzen_0_1_ppm'])
 
-    # # 데이터 크기 확인용
-    # if train_dataset:
-    #     num_data = 0
-    #     for _, t in train_dataset:
-    #         num_data += len(t)
-    #     print(f'the size of train data set: {num_data}')
-    #     # print(num_data, int(len(samples) * valid_rate) - 120 + 1)
-    # if valid_dataset:
-    #     num_data = 0
-    #     for _, t in valid_dataset:
-    #         num_data += len(t)
-    #     print(f'the size of validation data set: {num_data}')
-    # if test_dataset:
-    #     num_data = 0
-    #     for _, t in test_dataset:
-    #         num_data += len(t)
-    #     print(f'the size of test data set: {num_data}')
