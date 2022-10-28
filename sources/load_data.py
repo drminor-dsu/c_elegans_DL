@@ -3,6 +3,7 @@ import pathlib
 from collections import defaultdict
 import numpy as np
 import pandas as pd
+import json
 
 from sklearn.utils import shuffle
 from tensorflow import keras
@@ -21,10 +22,10 @@ test_rate = 0.2 # the ratio of test data (== remaining data except train data + 
 def timeseries_dataset(pollutants: list,
                        start=10,
                        end=40,
-                       duration=30,
-                       batch_size=128) -> '(train_set, valid_set, test_set, samples)':
+                       duration=30) -> 'train_x, train_y, valid_x, valid_y, test_x, test_y':
     """
-    오염 물질들의 데이터 파일 전체를 keras.utils.timeseries_dataset_from_array를 이용해 time series data_sets set 으로 변환
+    오염 물질들의 데이터 파일 전체를 keras.utils.timeseries_dataset_from_array를 이용해 time series dataset 으로 변환
+    train_x, train_y, valid_x, valid_y, test_x, test_y 반
 
     :param pollutants: list
         ex) ['Formaldehyde_0_1_ppm', 'Normal']
@@ -34,11 +35,9 @@ def timeseries_dataset(pollutants: list,
         The default is 40(분). 60분 짜리 csv 파일에서 실제 데이터로 사용할 부분의 마지막 시각
     :param duration: int
         The default is 30(초). 학습 및 판별에 사용할 관찰 시간
-    :param batch_size: int
-        The default is 128. batch size
 
-    :return: tuple of BatchDataset
-        (train_dataset, valid_dataset, test_dataset)
+    :return: tuple of splitted data set
+        train_x, train_y, valid_x, valid_y, test_x, test_y
     """
 
     data = defaultdict(list)  # data points:
