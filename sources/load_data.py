@@ -49,6 +49,10 @@ def timeseries_dataset(pollutants: list,
     sequence_length = duration * 4
 
     print(pollutants)
+    if len(pollutants) <= 2: # for binary classification
+        target = dict()
+        target[pollutants[0]] = 0
+        target[pollutants[1]] = 1
     for pollutant in pollutants:
         directory = os.path.join(data_path, pollutant)
         files = os.listdir(directory)
