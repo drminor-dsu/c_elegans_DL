@@ -8,10 +8,22 @@ import json
 from sklearn.utils import shuffle
 from tensorflow import keras
 
+import elegans_som as es
+import elegans_hmm as eh
+
+directory = {'Form_01': 'Formaldehyde_0_1_ppm',
+                 'Form_05': 'Formaldehyde_0_5_ppm',
+                 'Normal': 'Normal',
+                 'Benzen_01': 'Benzen_0_1_ppm',
+                 'Benzen_05': 'Benzen_0_5_ppm',
+                 'Toluen_01': 'Toluen_0_1_ppm',
+                 'Toluen_05': 'Toluen_0_5_ppm'}
+
 target = {'Normal': 0,
           'Benzen_0_1_ppm': 1, 'Benzen_0_5_ppm': 2,
           'Formaldehyde_0_1_ppm': 3, 'Formaldehyde_0_5_ppm': 4,
           'Toluen_0_1_ppm': 5, 'Toluen_0_5_ppm': 6}
+
 data_path = os.path.join(pathlib.Path(__file__).parents[1], 'data')
 # '../../data/'
 train_rate = 0.6 # the ratio of training data
@@ -19,7 +31,7 @@ valid_rate = 0.2 # the ratio of validation data
 test_rate = 0.2 # the ratio of test data (== remaining data except train data + valid data
 
 
-def timeseries_dataset(pollutants: list,
+def profile_timeseries_dataset(pollutants: list,
                        start=10,
                        end=40,
                        duration=30) -> 'train_x, train_y, valid_x, valid_y, test_x, test_y':
@@ -82,6 +94,7 @@ def timeseries_dataset(pollutants: list,
 
         num_frames[pollutant] = n_frame
         num_samples[pollutant] = n_sample
+        print(n_frame)
 
     # data_sets = np.float32(np.concatenate(data_sets, axis=0)) # for SOM
     train_x = []; train_y = []
@@ -91,12 +104,13 @@ def timeseries_dataset(pollutants: list,
     for key in data.keys():
         n_train = int(len(data[key]) * train_rate) # the number of training data samples
         n_valid = int(len(data[key]) * valid_rate) # the number of validation data samples
-        train_x.append(data[key][:n_train])
-        train_y.append(classes[key][:n_train])
-        valid_x.append(data[key][n_train:n_train+n_valid])
-        valid_y.append(classes[key][n_train:n_train + n_valid])
-        test_x.append(data[key][n_train + n_valid:])
-        test_y.append(classes[key][n_train + n_valid:])
+        x_data, y_data = shuffle(np.array(data[key]), np.array(classes[key]))
+        train_x.append(x_data[:n_train])
+        train_y.append(y_data[:n_train])
+        valid_x.append(x_data[n_train:n_train+n_valid])
+        valid_y.append(y_data[n_train:n_train + n_valid])
+        test_x.append(x_data[n_train + n_valid:])
+        test_y.append(y_data[n_train + n_valid:])
 
     train_x = np.concatenate(train_x, axis=0)
     train_y = np.concatenate(train_y, axis=0)
@@ -109,9 +123,13 @@ def timeseries_dataset(pollutants: list,
     valid_x, valid_y = shuffle(valid_x, valid_y)
     test_x, test_y = shuffle(test_x, test_y)
 
-    return train_x, train_y, valid_x, valid_y, test_x, test_y
+    scaled_train_x = (train_x - train_x.mean(axis=0)) / train_x.std(axis=0)
+    scaled_valid_x = (valid_x - valid_x.mean(axis=0)) / valid_x.std(axis=0)
+    scaled_test_x = (test_x - test_x.mean(axis=0)) / test_x.std(axis=0)
+
+    return scaled_train_x, train_y, scaled_valid_x, valid_y, scaled_test_x, test_y
 
 
 if __name__ == '__main__':
-    train_x, train_y, valid_x, valid_y, test_x, test_y = timeseries_dataset(['Formaldehyde_0_1_ppm', 'Benzen_0_1_ppm'])
+    train_x, train_y, valid_x, valid_y, test_x, test_y = profile_timeseries_dataset(['Formaldehyde_0_1_ppm', 'Benzen_0_1_ppm'])
 
