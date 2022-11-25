@@ -1,9 +1,11 @@
 import os
 import sys
 sys.path.extend('./')
+
 import pathlib
 import numpy as np
 import pandas as pd
+
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, accuracy_score
 from sklearn.metrics import precision_score, recall_score, f1_score
@@ -15,13 +17,15 @@ import time
 import load_data
 
 droot = pathlib.Path(__file__).parents[0]
-dfiles = {'Form_01': 'data/Formaldehyde_0_1_ppm',
-             'Form_05': 'data/Formaldehyde_0_1_ppm',
-             'Normal': 'data/Normal',
-             'Benzen_01': 'data/Benzen_0_1_ppm',
-             'Benzen_05': 'data/Benzen_0_5_ppm',
-             'Toulen_01': 'data/Toulen_0_1_ppm',
-             'Toulen_05': 'data/Toulen_0_5_ppm'}
+dfiles = {
+    'Form_01': 'data/Formaldehyde_0_1_ppm',
+    'Form_05': 'data/Formaldehyde_0_1_ppm',
+    'Normal': 'data/Normal',
+    'Benzen_01': 'data/Benzen_0_1_ppm',
+    'Benzen_05': 'data/Benzen_0_5_ppm',
+    'Toulen_01': 'data/Toulen_0_1_ppm',
+    'Toulen_05': 'data/Toulen_0_5_ppm'
+}
 
 
 def split_input_data_from_files(*kinds, test_size=0.2):
@@ -49,14 +53,14 @@ def split_input_data_from_dicts(data_dict, test_size=0.2):
         train, test = train_test_split(data_dict[d], test_size=test_size, random_state=42)
         train_dict[d] = train
         test_dict[d] = test
-        print(np.asarray(train).shape)
-        print(np.asarray(test).shape)
+        # print(np.asarray(train).shape)
+        # print(np.asarray(test).shape)
 
     return train_dict, test_dict
 
 
-def build_and_save_hmm(x, label, n_components=5, save=False):
-    model = hmm.MultinomialHMM(n_components=n_components, n_iter=10)
+def build_and_save_hmm(x, label, n_components=5, n_iter=10, save=False):
+    model = hmm.MultinomialHMM(n_components=n_components, n_iter=n_iter)
     model.fit(x)
 
     if save:
@@ -67,12 +71,12 @@ def build_and_save_hmm(x, label, n_components=5, save=False):
     return model
 
 
-def model_training(train_dict, n_components=5, save=False):
+def model_training(train_dict, n_components=5, n_iter=10, save=False):
 
     model_dicts = {}
     for chemical in train_dict:
         print('Training {} HMM'.format(chemical))
-        hmm = build_and_save_hmm(train_dict[chemical], chemical, n_components=n_components, save=save)
+        hmm = build_and_save_hmm(train_dict[chemical], chemical, n_components=n_components, n_iter=n_iter, save=save)
         model_dicts[chemical] = hmm
 
     return model_dicts
@@ -104,7 +108,7 @@ def predict(model_dict, test_dict):
         for hmm in model_dict:
             score = []
             for sample in test_dict[chemical]:
-                print(np.array(sample).reshape(1, -1).shape)
+                # print(np.array(sample).reshape(1, -1).shape)
                 temp_s = model_dict[hmm].score(np.array(sample).reshape(1, -1))
                 score.append(temp_s)
             #score = [model_dict[hmm].score([sample]) for sample in test_dict[chemical]]

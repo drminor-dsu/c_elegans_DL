@@ -23,13 +23,15 @@ sys.path.extend(['./'])  # for module import elegans_som, _hmm: 복사해온 경
 # 			'Toluen_01': 'Toluen_0_1_ppm',
 # 			'Toluen_05': 'Toluen_0_5_ppm'}
 
-target = {'Normal': 0,
-		  'Benzen_0_1_ppm': 1,
-		  'Benzen_0_5_ppm': 2,
-		  'Formaldehyde_0_1_ppm': 3,
-		  'Formaldehyde_0_5_ppm': 4,
-		  'Toluen_0_1_ppm': 5,
-		  'Toluen_0_5_ppm': 6}
+target = {
+	'Normal': 0,
+	'Benzen_0_1_ppm': 1,
+	'Benzen_0_5_ppm': 2,
+	'Formaldehyde_0_1_ppm': 3,
+	'Formaldehyde_0_5_ppm': 4,
+	'Toluen_0_1_ppm': 5,
+	'Toluen_0_5_ppm': 6
+}
 
 data_path = os.path.join(pathlib.Path(__file__).parents[1], 'data')
 # '../../data/'
@@ -38,10 +40,12 @@ valid_rate = 0.2  # the ratio of validation data
 test_rate = 0.2  # the ratio of test data (== remaining data except train data + valid data
 
 
-def timeseries_for_hmm(pollutants: list,
-					   start=10,
-					   end=40,
-					   duration=30) -> 'train_x, train_y, valid_x, valid_y, test_x, test_y':
+def timeseries_for_hmm(
+		pollutants: list,
+		start=10,
+		end=40,
+		duration=30
+	) -> 'train_x, train_y, valid_x, valid_y, test_x, test_y':
 	'''
 
 	:param pollutants:
@@ -74,6 +78,7 @@ def timeseries_for_hmm(pollutants: list,
 		target[pollutants[i]] = i
 
 	num_samples_per_file = 60 * 4 * (end - start)  # 한 파일에 포함된 sequence 수
+	pol_id = 0
 	for pol in divided_seq:
 		n_frame = 0
 		n_sample = 0
@@ -81,7 +86,7 @@ def timeseries_for_hmm(pollutants: list,
 			fseqs = divided_seq[pol][i * num_samples_per_file: (i + 1) * num_samples_per_file]
 			targets = np.full(len(fseqs), target[pol])
 			n_frame += len(fseqs)
-			print(pol, targets[0], fseqs.shape, targets.shape)
+			# print(pol, targets[0], fseqs.shape, targets.shape)
 			time_series = keras.utils.timeseries_dataset_from_array(
 				fseqs,
 				targets=targets,
@@ -96,7 +101,8 @@ def timeseries_for_hmm(pollutants: list,
 
 		num_frames[pol] = n_frame
 		num_samples[pol] = n_sample
-		print(n_frame, n_sample)
+		print(f'{pollutants[pol_id]} -> Number of frames: {n_frame}, Number of samples: {n_sample}')
+		pol_id += 1
 
 	train_x = dict();
 	train_y = dict()
@@ -104,21 +110,35 @@ def timeseries_for_hmm(pollutants: list,
 	test_y = dict()
 
 	for key in data.keys():
-		n_train = int(len(data[key]) * train_rate)  # the number of training data samples
-		n_valid = int(len(data[key]) * valid_rate)  # the number of validation data samples
+		n_train = int(len(data[key]) * (train_rate + valid_rate))  # the number of training data samples
 		x_data, y_data = shuffle(np.array(data[key]), np.array(classes[key]))
 		train_x[key] = x_data[:n_train]
 		train_y[key] = y_data[:n_train]
 		test_x[key] = x_data[n_train:]
 		test_y[key] = y_data[n_train:]
+		print(f"{key} -> train: {n_train}, test: {len(data[key]) - n_train} : no validation for HMM")
 
 	return train_x, train_y, test_x, test_y
 
 
-def som_timeseries_dataset(pollutants: list,
-						   start=10,
-						   end=40,
-						   duration=30) -> 'train_x, train_y, valid_x, valid_y, test_x, test_y':
+def som_timeseries_dataset(
+		pollutants: list,
+		start=10,
+		end=40,
+		duration=30,
+		scaling=True
+	) -> 'train_x, train_y, valid_x, valid_y, test_x, test_y':
+	"""
+
+	:param pollutants:
+	:param start:
+	:param end:
+	:param duration:
+	:param scaling:
+		실제 의미 없음. 데이터 로딩 함수들의 인터페이스를 동일하게 하기 위해 추가해 놓은 인수임.
+	:return:
+	"""
+
 	# data = es.load_all_data(*kinds, start=start, end=end)  # 단위(분) ex) start 10분, end 40분: 30분 데이터 사용
 	raw_data, num_files = es.load_data(pollutants, start=start, end=end)
 
@@ -142,6 +162,7 @@ def som_timeseries_dataset(pollutants: list,
 		target[pollutants[i]] = i
 
 	num_samples_per_file = 60 * 4 * (end - start)  # 한 파일에 포함된 sequence 수
+	pol_id = 0
 	for pol in divided_seq:
 		n_frame = 0
 		n_sample = 0
@@ -149,7 +170,7 @@ def som_timeseries_dataset(pollutants: list,
 			fseqs = divided_seq[pol][i * num_samples_per_file: (i + 1) * num_samples_per_file]
 			targets = np.full(len(fseqs), target[pol])
 			n_frame += len(fseqs)
-			print(pol, targets[0], fseqs.shape, targets.shape)
+			# print(pol, targets[0], fseqs.shape, targets.shape)
 			time_series = keras.utils.timeseries_dataset_from_array(
 				fseqs,
 				targets=targets,
@@ -164,7 +185,8 @@ def som_timeseries_dataset(pollutants: list,
 
 		num_frames[pol] = n_frame
 		num_samples[pol] = n_sample
-		print(n_frame, n_sample)
+		print(f'{pollutants[pol_id]} -> Number of frames: {n_frame}, Number of samples: {n_sample}')
+		pol_id += 1
 
 	train_x = [];
 	train_y = []
@@ -198,15 +220,18 @@ def som_timeseries_dataset(pollutants: list,
 	train_x = np.expand_dims(train_x, axis=2).astype(np.float32)
 	valid_x = np.expand_dims(valid_x, axis=2).astype(np.float32)
 	test_x = np.expand_dims(test_x, axis=2).astype(np.float32)
+	print(f"train: {train_y.shape}, valid: {valid_y.shape}, test: {test_y.shape}")
 
 	return train_x, train_y, valid_x, valid_y, test_x, test_y
 
 
-def profile_timeseries_dataset(pollutants: list,
-							   start=10,
-							   end=40,
-							   duration=30,
-							   scaling=True) -> 'train_x, train_y, valid_x, valid_y, test_x, test_y':
+def profile_timeseries_dataset(
+		pollutants: list,
+		start=10,
+		end=40,
+		duration=30,
+		scaling=True
+	) -> 'train_x, train_y, valid_x, valid_y, test_x, test_y':
 	"""
 	오염 물질들의 데이터 파일 전체를 keras.utils.timeseries_dataset_from_array를 이용해 time series dataset 으로 변환
 	train_x, train_y, valid_x, valid_y, test_x, test_y 반
@@ -219,6 +244,8 @@ def profile_timeseries_dataset(pollutants: list,
 		The default is 40(분). 60분 짜리 csv 파일에서 실제 데이터로 사용할 부분의 마지막 시각
 	:param duration: int
 		The default is 30(초). 학습 및 판별에 사용할 관찰 시간
+	:parma scaling: Bool
+		The default is True.
 
 	:return: tuple of splitted data set
 		train_x, train_y, valid_x, valid_y, test_x, test_y
@@ -266,7 +293,8 @@ def profile_timeseries_dataset(pollutants: list,
 
 		num_frames[pollutant] = n_frame
 		num_samples[pollutant] = n_sample
-		print(n_frame)
+		print(f'{pollutant} -> Number of frames: {n_frame}, Number of samples: {n_sample}')
+		i += 1
 
 	train_x = [];
 	train_y = []
@@ -301,6 +329,7 @@ def profile_timeseries_dataset(pollutants: list,
 		train_x = (train_x - train_x.mean(axis=0)) / train_x.std(axis=0)
 		valid_x = (valid_x - valid_x.mean(axis=0)) / valid_x.std(axis=0)
 		test_x = (test_x - test_x.mean(axis=0)) / test_x.std(axis=0)
+	print(f"train: {train_y.shape}, valid: {valid_y.shape}, test: {test_y.shape}")
 
 	return train_x, train_y, valid_x, valid_y, test_x, test_y
 
