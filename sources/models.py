@@ -155,9 +155,20 @@ def model_evaluate(test_x, test_y, fname):
 	fbodies = fname.split('_')
 	if 'transformer' in fbodies:
 		# print('Model: Transformer ')
-		model = tf.keras.models.load_model(os.path.join('../models', fname), custom_objects={"TransformerEncoder": TransformerEncoder})
+		try:
+			model = tf.keras.models.load_model(os.path.join('../models', fname), custom_objects={"TransformerEncoder": TransformerEncoder})
+		except ImportError as err:
+			print('Model loading failure', err)
+		except IOError as err:
+			print("Model loading failure", err)
 	else:
-		model = tf.keras.models.load_model(os.path.join('../models', fname))
+		try:
+			model = tf.keras.models.load_model(os.path.join('../models', fname))
+		except ImportError as err:
+			print('Model loading failure', err)
+		except IOError as err:
+			print("Model loading failure", err)
+
 	results = model.evaluate(test_x, test_y)
 
 	# # result record
@@ -193,14 +204,11 @@ def display(history, fname):
 	# plt.show()
 
 
-def do_experiment(data_gen, models, duration, epochs, data_set, scaling=True):
+def do_experiment(data_gen, models, duration, epochs, data_set, train=True, scaling=True):
 
 	# Data set Selection
 	ncategory = len(data_set)
 	train_x, train_y, valid_x, valid_y, test_x, test_y = data_gen(data_set, duration=duration, scaling=scaling)
-
-	# Model Selection
-	model = models(train_x.shape[1], train_x.shape[-1], ncategory=ncategory)
 
 	d_names = [short_cut[name] for name in data_set]
 	scale = 'scale_1' if scaling else 'scale_0'
@@ -208,7 +216,12 @@ def do_experiment(data_gen, models, duration, epochs, data_set, scaling=True):
 	# print(fname)
 
 	# Model training
-	history = model_train(model, train_x, train_y, valid_x, valid_y, fname, epochs=epochs, ncategory=ncategory)
+	if train:
+		# Model Selection
+		model = models(train_x.shape[1], train_x.shape[-1], ncategory=ncategory)
+		history = model_train(model, train_x, train_y, valid_x, valid_y, fname, epochs=epochs, ncategory=ncategory)
+
+	# Model testing
 	results = model_evaluate(test_x, test_y, fname)
 
 	print(f"test loss: {results[0]}, test accuracy: {results[1]}\n\n")

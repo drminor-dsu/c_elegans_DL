@@ -1,6 +1,7 @@
 import os
 import pathlib
 
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -53,6 +54,7 @@ dnn_models = {
 	6: models.transformer
 }
 
+# Selection of data type: SOM pattern or Bls profile
 data_gen = {
 	0: load_data.som_timeseries_dataset,
 	1: load_data.profile_timeseries_dataset
@@ -74,56 +76,108 @@ def hmm_experiments(pollutants, tinter_list, epochs)->'list':
 	return hmm_accuracy
 
 
-def dnn_experiments(dnns, pollutants, tinter_list, epochs)-> 'list of list':
+def dnn_experiments(dnns, data_type, pollutants, tinter_list, epochs, train=True, scaling=True)-> 'list of list':
+	"""
+
+	:param dnns:
+	:param data_type:
+		SOM data type: 0 과 BLS profile data type: 1 중 선택
+	:param pollutants:
+	:param tinter_list:
+	:param epochs:
+	:return: accuracy
+		각 모델들을 대상으로 tinter_list 즉 duration에 대한 정확도 반환
+		[[30, 60, 90, 120, 150, 180], [30, 60, 90, 120, 150, 180], [30, 60, 90, 120, 150, 180] ...]
+	"""
 	accuracy = []
 	for model_id in dnns:
-		model_accuracy = []
+		model_accuracy = [] # for each duration
 		for du in tinter_list:
 			tf.keras.backend.clear_session()
 			if tf.test.is_gpu_available('gpu'):
 				print('GPU is available')
 			data, model = models.do_experiment(
-				data_gen[0],
+				data_gen[data_type], # data type <- SOM pattern: 0, BLS profile: 1
 				dnn_models[model_id],
 				duration=du,
 				epochs=epochs,
 				data_set=pollutants,
-				scaling=True
+				train=train,
+				scaling=scaling
 			)
-			model_accuracy.append(model[2][1])
+			model_accuracy.append(model[2][1]) #
 			print(f'{dnn_models[model_id].__name__} Accuracy {du}: {model[2][1]}\n\n')
 		accuracy.append(model_accuracy)
 
 	return accuracy
 
 
+def display(data):
+	# hmm = np.array([0.53310349, 0.57035034, 0.56001052, 0.59778913, 0.5781693, 0.57265539])
+	# lstm = np.array([0.84932139, 0.90554857, 0.93012849, 0.94313756, 0.95631149, 0.9589441])
+	hmm = data.iloc[0]
+	lstm = data.iloc[1]
+
+	duration = [30, 60, 90, 120, 150, 180]
+	ticks = range(len(duration))
+
+	plt.rcParams['font.size'] = 17
+	plt.rcParams['font.weight'] = 'bold'
+	params = {'linewidth': 2.0, 'markersize': 12}
+
+	fig, ax = plt.subplots(1, 1, figsize=(10, 7))
+	ax.plot(
+		ticks, hmm, 'bd--',
+		linewidth=params['linewidth'], markersize=params['markersize'],
+		label='Hidden Markov Model'
+	)
+	ax.plot(
+		ticks, lstm, 'ko-',
+		linewidth=params['linewidth'], markersize=params['markersize'],
+		label='Long Short-Term Memory'
+	)
+	ax.set_xlabel('Duration', fontsize=20, fontdict=dict(weight='bold'))
+	ax.set_ylabel('Accuracy', fontsize=20, fontdict=dict(weight='bold'))
+	ax.set_xticks(ticks, duration)
+	ax.set_title("Accuracy Comparison", fontsize=24, fontdict=dict(weight='bold'))
+	ax.legend()
+
+
 if __name__ == '__main__':
 	tinter_list = [30, 60, 90, 120, 150, 180]  # observation interval(secs)s to predict the water condition
-	pollutants = ['Benzen_0_1_ppm', 'Formaldehyde_0_1_ppm']
+	pollutants = ['Normal', 'Formaldehyde_0_1_ppm']
 	epochs = 30
 	dnns = [3] # list of dnn_models
 	accuracy = defaultdict(list)
-	num_experiments = 1 # 총 실험 횟수 -> 전체 실험의 평균 계산을 위해
+	num_experiments = 3 # 총 실험 횟수 -> 전체 실험의 평균 계산을 위해
+	hmm = True
 
 	for _ in range(num_experiments):
-		if True: # switch to include running hmm experiments
+		if hmm: # switch to include running hmm experiments
 			print(f"{'='*10} HMM training start! {'='*10}")
 			hmm_accuracy = hmm_experiments(pollutants, tinter_list, epochs=epochs)
 			accuracy['hmm'].append(np.array(hmm_accuracy))
 		print(f"{'='*10} DNN training start! {'='*10}")
-		dnn_accuracy = dnn_experiments(dnns, pollutants, tinter_list, epochs=epochs)
+		dnn_accuracy = dnn_experiments(dnns, 0, pollutants, tinter_list, epochs=epochs)
 		for i, acc in enumerate(dnn_accuracy):
 			accuracy[dnn_models[dnns[i]].__name__].append(np.array(acc))
 
-	accuracy = np.array(accuracy)
-	avg_accuracy = np.mean(accuracy, axis=0)
+	avg_accuracy = []
+	for m in accuracy.keys():
+		avg_accuracy.append(np.mean(np.asarray(accuracy[m]), axis=0))
 
-	df = pd.DataFrame(avg_accuracy, index=tinter_list)
+	index = []
+	if hmm:
+		index.append('hmm')
+	index += [dnn_models[d].__name__ for d in dnns]
+	df = pd.DataFrame(avg_accuracy, columns=tinter_list, index=index)
 	fname = '_'.join([short_cut[p] for p in pollutants])
-	fname += '_hmm_'
+	if hmm:
+		fname += '_hmm_'
 	fname += '_'.join([dnn_models[d].__name__ for d in dnns])
+	fname += '_accuracy'
 	fname += '.csv'
-	fname = os.path.join('../result', fname)
+	# fname = os.path.join('../result', fname)
 	# if os.path.exists(fname):
 	# 	os.remove(fname)
 	df.to_csv(os.path.join('../results', fname), mode='a')

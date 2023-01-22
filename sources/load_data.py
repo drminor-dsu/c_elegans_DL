@@ -45,14 +45,17 @@ def timeseries_for_hmm(
 		start=10,
 		end=40,
 		duration=30
-	) -> 'train_x, train_y, valid_x, valid_y, test_x, test_y':
+	) -> 'train_x, train_y, valid_x, valid_y, test_x, test_y: dictionary':
 	'''
+	Hidden Markov Model을 위한 데이터 생성
+	HMM은 오염물질 각각에 대해 별개의 모델을 만들어 학습해야 하므로 딕셔너리를 활용해 각 화학물질별 데이터를 분리해서 생
 
 	:param pollutants:
 	:param start:
 	:param end:
 	:param duration:
-	:return:
+	:return: train_x, train_y, valid_x, valid_y, test_x, test_y: dictionary
+
 	'''
 
 	# data = es.load_all_data(*kinds, start=start, end=end)  # 단위(분) ex) start 10분, end 40분: 30분 데이터 사용

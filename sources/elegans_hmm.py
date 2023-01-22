@@ -65,7 +65,7 @@ def build_and_save_hmm(x, label, n_components=5, n_iter=10, save=False):
 
     if save:
         #ftime = time.strftime('%y%m%d%H%M', time.localtime())
-        with open(label + '_hmm.pkl', 'wb') as fd:
+        with open('../models/' + label + '_hmm.pkl', 'wb') as fd:
             pickle.dump(model, fd)
 
     return model
@@ -83,7 +83,7 @@ def model_training(train_dict, n_components=5, n_iter=10, save=False):
 
 
 def load_hmm(label):
-    fname = '{}_hmm.pkl'.format(label)
+    fname = f'../models/{label}_hmm.pkl'
     with open(fname, 'rb') as fd:
         model = pickle.load(fd)
 
@@ -184,11 +184,11 @@ def print_metrics(num, conf_mat, accuracy, precision, recall, f1, support, chemi
 
 
 if __name__ == '__main__':
-    pollutants = ['Normal', 'Formaldehyde_0_1_ppm']
+    pollutants = ['Benzen_0_1_ppm', 'Formaldehyde_0_1_ppm']
     train_x, train_y, test_x, test_y = load_data.timeseries_for_hmm(pollutants)
-    models_dict = model_training(train_x, save=True)
-    predict_dict = predict(models_dict, test_x)
-    accuracy, support = metrics(0, predict_dict)
-    print(accuracy)
-    print(support)
+    # models_dict = model_training(train_x, save=True)
+    # predict_dict = predict(models_dict, test_x)
+    # accuracy, support = metrics(0, predict_dict)
+    # print(accuracy)
+    # print(support)
 
