@@ -67,7 +67,7 @@ def hmm_experiments(pollutants, tinter_list, epochs)->'list':
 	for du in tinter_list:
 		print(f'Observation interval: {du}')
 		train_x, train_y, test_x, test_y = load_data.timeseries_for_hmm(pollutants, duration=du)
-		models_dict = eh.model_training(train_x, n_iter=epochs, save=True)
+		models_dict = eh.model_training(train_x, du, n_iter=epochs, save=True)
 		predict_dict = eh.predict(models_dict, test_x)
 		accuracy, support = eh.metrics(0, predict_dict)
 		hmm_accuracy.append(accuracy)

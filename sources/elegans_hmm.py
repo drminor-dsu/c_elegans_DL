@@ -59,31 +59,32 @@ def split_input_data_from_dicts(data_dict, test_size=0.2):
     return train_dict, test_dict
 
 
-def build_and_save_hmm(x, label, n_components=5, n_iter=10, save=False):
+def build_and_save_hmm(x, label, du, n_components=5, n_iter=10, save=False):
     model = hmm.MultinomialHMM(n_components=n_components, n_iter=n_iter)
     model.fit(x)
 
     if save:
         #ftime = time.strftime('%y%m%d%H%M', time.localtime())
-        with open('../models/' + label + '_hmm.pkl', 'wb') as fd:
+        fname = f'../models/{label}_du_{du}_hmm.pkl'
+        with open(fname, 'wb') as fd:
             pickle.dump(model, fd)
 
     return model
 
 
-def model_training(train_dict, n_components=5, n_iter=10, save=False):
+def model_training(train_dict, du, n_components=5, n_iter=10, save=False):
 
     model_dicts = {}
     for chemical in train_dict:
         print('Training {} HMM'.format(chemical))
-        hmm = build_and_save_hmm(train_dict[chemical], chemical, n_components=n_components, n_iter=n_iter, save=save)
+        hmm = build_and_save_hmm(train_dict[chemical], chemical, du, n_components=n_components, n_iter=n_iter, save=save)
         model_dicts[chemical] = hmm
 
     return model_dicts
 
 
-def load_hmm(label):
-    fname = f'../models/{label}_hmm.pkl'
+def load_hmm(label, du):
+    fname = f'../models/{label}_du_{du}_hmm.pkl'
     with open(fname, 'rb') as fd:
         model = pickle.load(fd)
 
