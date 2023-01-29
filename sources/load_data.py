@@ -12,6 +12,10 @@ from tensorflow import keras
 
 import elegans_som as es
 import elegans_hmm as eh
+import logging.config
+
+logging.config.fileConfig('./logging.ini', disable_existing_loggers=False)
+logger = logging.getLogger(__name__)
 
 sys.path.extend(['./'])  # for module import elegans_som, _hmm: 복사해온 경우 파일 import가 안되는 경우
 
@@ -75,7 +79,7 @@ def timeseries_for_hmm(
 	end_frame = end * 60 * 4
 	sequence_length = duration * 4
 
-	print(pollutants)
+	logger.info(pollutants)
 	target = dict()
 	for i in range(len(pollutants)):
 		target[pollutants[i]] = i
@@ -89,7 +93,7 @@ def timeseries_for_hmm(
 			fseqs = divided_seq[pol][i * num_samples_per_file: (i + 1) * num_samples_per_file]
 			targets = np.full(len(fseqs), target[pol])
 			n_frame += len(fseqs)
-			# print(pol, targets[0], fseqs.shape, targets.shape)
+			# logger.info(pol, targets[0], fseqs.shape, targets.shape)
 			time_series = keras.utils.timeseries_dataset_from_array(
 				fseqs,
 				targets=targets,
@@ -104,7 +108,7 @@ def timeseries_for_hmm(
 
 		num_frames[pol] = n_frame
 		num_samples[pol] = n_sample
-		print(f'{pollutants[pol_id]} -> Number of frames: {n_frame}, Number of samples: {n_sample}')
+		logger.info(f'{pollutants[pol_id]} -> Number of frames: {n_frame}, Number of samples: {n_sample}')
 		pol_id += 1
 
 	train_x = dict();
@@ -119,7 +123,7 @@ def timeseries_for_hmm(
 		train_y[key] = y_data[:n_train]
 		test_x[key] = x_data[n_train:]
 		test_y[key] = y_data[n_train:]
-		print(f"{key} -> train: {n_train}, test: {len(data[key]) - n_train} : no validation for HMM")
+		logger.info(f"{key} -> train: {n_train}, test: {len(data[key]) - n_train} : no validation for HMM")
 
 	return train_x, train_y, test_x, test_y
 
@@ -159,7 +163,7 @@ def som_timeseries_dataset(
 	end_frame = end * 60 * 4
 	sequence_length = duration * 4
 
-	print(pollutants)
+	logger.info(pollutants)
 	target = dict()
 	for i in range(len(pollutants)):
 		target[pollutants[i]] = i
@@ -173,7 +177,7 @@ def som_timeseries_dataset(
 			fseqs = divided_seq[pol][i * num_samples_per_file: (i + 1) * num_samples_per_file]
 			targets = np.full(len(fseqs), target[pol])
 			n_frame += len(fseqs)
-			# print(pol, targets[0], fseqs.shape, targets.shape)
+			# logger.info(pol, targets[0], fseqs.shape, targets.shape)
 			time_series = keras.utils.timeseries_dataset_from_array(
 				fseqs,
 				targets=targets,
@@ -188,7 +192,7 @@ def som_timeseries_dataset(
 
 		num_frames[pol] = n_frame
 		num_samples[pol] = n_sample
-		print(f'{pollutants[pol_id]} -> Number of frames: {n_frame}, Number of samples: {n_sample}')
+		logger.info(f'{pollutants[pol_id]} -> Number of frames: {n_frame}, Number of samples: {n_sample}')
 		pol_id += 1
 
 	train_x = [];
@@ -223,7 +227,7 @@ def som_timeseries_dataset(
 	train_x = np.expand_dims(train_x, axis=2).astype(np.float32)
 	valid_x = np.expand_dims(valid_x, axis=2).astype(np.float32)
 	test_x = np.expand_dims(test_x, axis=2).astype(np.float32)
-	print(f"train: {train_y.shape}, valid: {valid_y.shape}, test: {test_y.shape}")
+	logger.info(f"train: {train_y.shape}, valid: {valid_y.shape}, test: {test_y.shape}")
 
 	return train_x, train_y, valid_x, valid_y, test_x, test_y
 
@@ -262,7 +266,7 @@ def profile_timeseries_dataset(
 	end_frame = end * 60 * 4
 	sequence_length = duration * 4
 
-	print(pollutants)
+	logger.info(pollutants)
 	target = dict()
 	for i in range(len(pollutants)):
 		target[pollutants[i]] = i
@@ -274,7 +278,7 @@ def profile_timeseries_dataset(
 		n_frame = 0
 		n_sample = 0
 		for csvfile in files:
-			print(csvfile)
+			logger.info(csvfile)
 			df = pd.read_csv(os.path.join(directory, csvfile), header=None)
 			df.dropna(axis=0, inplace=True)
 			df = df[start_frame: end_frame]
@@ -296,7 +300,7 @@ def profile_timeseries_dataset(
 
 		num_frames[pollutant] = n_frame
 		num_samples[pollutant] = n_sample
-		print(f'{pollutant} -> Number of frames: {n_frame}, Number of samples: {n_sample}')
+		logger.info(f'{pollutant} -> Number of frames: {n_frame}, Number of samples: {n_sample}')
 		i += 1
 
 	train_x = [];
@@ -332,7 +336,7 @@ def profile_timeseries_dataset(
 		train_x = (train_x - train_x.mean(axis=0)) / train_x.std(axis=0)
 		valid_x = (valid_x - valid_x.mean(axis=0)) / valid_x.std(axis=0)
 		test_x = (test_x - test_x.mean(axis=0)) / test_x.std(axis=0)
-	print(f"train: {train_y.shape}, valid: {valid_y.shape}, test: {test_y.shape}")
+	logger.info(f"train: {train_y.shape}, valid: {valid_y.shape}, test: {test_y.shape}")
 
 	return train_x, train_y, valid_x, valid_y, test_x, test_y
 

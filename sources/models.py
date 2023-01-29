@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import load_data
 from transformer import TransformerEncoder
+import logging.config
+
+logging.config.fileConfig('./logging.ini', disable_existing_loggers=False)
+logger = logging.getLogger(__name__)
 
 short_cut = {
 	'Formaldehyde_0_1_ppm': 'Form_01',
@@ -225,6 +229,7 @@ def do_experiment(data_gen, models, duration, epochs, data_set, train=True, scal
 	results = model_evaluate(test_x, test_y, fname)
 
 	print(f"test loss: {results[0]}, test accuracy: {results[1]}\n\n")
+	logger.info(f"test loss: {results[0]}, test accuracy: {results[1]}\n\n")
 	# display(history, fname)
 
 	return (train_x, train_y, valid_x, valid_y, test_x, test_y), (model, history, results)

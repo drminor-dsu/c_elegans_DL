@@ -14,6 +14,11 @@ import elegans_hmm as eh
 
 from transformer import TransformerEncoder
 
+import logging.config
+
+logging.config.fileConfig('./logging.ini', disable_existing_loggers=False)
+logger = logging.getLogger(__name__)
+
 # dfiles = {
 # 	'Form_01': 'data/Formaldehyde_0_1_ppm',
 # 	'Form_05': 'data/Formaldehyde_0_1_ppm',
@@ -65,13 +70,14 @@ def hmm_experiments(pollutants, tinter_list, epochs)->'list':
 	# HMM experiments
 	hmm_accuracy = []
 	for du in tinter_list:
+		logger.info(f'Observation interval: {du}')
 		print(f'Observation interval: {du}')
 		train_x, train_y, test_x, test_y = load_data.timeseries_for_hmm(pollutants, duration=du)
 		models_dict = eh.model_training(train_x, du, n_iter=epochs, save=True)
 		predict_dict = eh.predict(models_dict, test_x)
 		accuracy, support = eh.metrics(0, predict_dict)
 		hmm_accuracy.append(accuracy)
-		print(f'HMM Accuracy {du}: {accuracy}\n\n')
+		logger.info(f'HMM Accuracy {du}: {accuracy}\n\n')
 
 	return hmm_accuracy
 
@@ -93,6 +99,8 @@ def dnn_experiments(dnns, data_type, pollutants, tinter_list, epochs, train=True
 	for model_id in dnns:
 		model_accuracy = [] # for each duration
 		for du in tinter_list:
+			logger.info(f'Observation interval: {du}')
+			print(f'Observation interval: {du}')
 			tf.keras.backend.clear_session()
 			if tf.test.is_gpu_available('gpu'):
 				print('GPU is available')
@@ -106,7 +114,7 @@ def dnn_experiments(dnns, data_type, pollutants, tinter_list, epochs, train=True
 				scaling=scaling
 			)
 			model_accuracy.append(model[2][1]) #
-			print(f'{dnn_models[model_id].__name__} Accuracy {du}: {model[2][1]}\n\n')
+			logger.info(f'{dnn_models[model_id].__name__} Accuracy {du}: {model[2][1]}\n\n')
 		accuracy.append(model_accuracy)
 
 	return accuracy
@@ -144,12 +152,12 @@ def display(data):
 
 
 if __name__ == '__main__':
-	tinter_list = [30, 60, 90, 120, 150, 180]  # observation interval(secs)s to predict the water condition
+	tinter_list = [180] #[30, 60, 90, 120, 150] #, 180]  # observation interval(secs)s to predict the water condition
 	pollutants = ['Normal', 'Formaldehyde_0_1_ppm']
 	epochs = 30
 	dnns = [3] # list of dnn_models
 	accuracy = defaultdict(list)
-	num_experiments = 3 # 총 실험 횟수 -> 전체 실험의 평균 계산을 위해
+	num_experiments = 2 # 총 실험 횟수 -> 전체 실험의 평균 계산을 위해
 	hmm = True
 
 	for _ in range(num_experiments):
@@ -157,10 +165,10 @@ if __name__ == '__main__':
 			print(f"{'='*10} HMM training start! {'='*10}")
 			hmm_accuracy = hmm_experiments(pollutants, tinter_list, epochs=epochs)
 			accuracy['hmm'].append(np.array(hmm_accuracy))
-		print(f"{'='*10} DNN training start! {'='*10}")
-		dnn_accuracy = dnn_experiments(dnns, 0, pollutants, tinter_list, epochs=epochs)
-		for i, acc in enumerate(dnn_accuracy):
-			accuracy[dnn_models[dnns[i]].__name__].append(np.array(acc))
+		# print(f"{'='*10} DNN training start! {'='*10}")
+		# dnn_accuracy = dnn_experiments(dnns, 0, pollutants, tinter_list, epochs=epochs)
+		# for i, acc in enumerate(dnn_accuracy):
+		# 	accuracy[dnn_models[dnns[i]].__name__].append(np.array(acc))
 
 	avg_accuracy = []
 	for m in accuracy.keys():
@@ -172,8 +180,9 @@ if __name__ == '__main__':
 	index += [dnn_models[d].__name__ for d in dnns]
 	df = pd.DataFrame(avg_accuracy, columns=tinter_list, index=index)
 	fname = '_'.join([short_cut[p] for p in pollutants])
+	fname += '_'
 	if hmm:
-		fname += '_hmm_'
+		fname += 'hmm_'
 	fname += '_'.join([dnn_models[d].__name__ for d in dnns])
 	fname += '_accuracy'
 	fname += '.csv'
