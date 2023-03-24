@@ -1,5 +1,7 @@
 import os
 import pathlib
+import time
+import socket
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -157,7 +159,7 @@ if __name__ == '__main__':
 	epochs = 30
 	dnns = [3] # list of dnn_models
 	accuracy = defaultdict(list)
-	num_experiments = 2 # 총 실험 횟수 -> 전체 실험의 평균 계산을 위해
+	num_experiments = 3 # 총 실험 횟수 -> 전체 실험의 평균 계산을 위해
 	hmm = True
 
 	for _ in range(num_experiments):
@@ -184,8 +186,8 @@ if __name__ == '__main__':
 	if hmm:
 		fname += 'hmm_'
 	fname += '_'.join([dnn_models[d].__name__ for d in dnns])
-	fname += '_accuracy'
-	fname += '.csv'
+	fname += '_accuracy_' + time.strftime('%Y%m%d%H%M', time.localtime()) \
+			 + socket.gethostbyname(socket.gethostname()).split('.')[-1] + '.csv'
 	# fname = os.path.join('../result', fname)
 	# if os.path.exists(fname):
 	# 	os.remove(fname)

@@ -187,13 +187,30 @@ def display(history, fname):
 	loss = history.history['loss']
 	val_loss = history.history['val_loss']
 	epochs = range(1, len(loss) + 1)
-	plt.figure()
-	plt.plot(epochs, loss, 'bo', label='Training')
-	plt.plot(epochs, val_loss, 'rx-', label='Validation')
-	plt.xlabel('Epoch')
-	plt.ylabel('Loss')
-	plt.title('Loss')
-	plt.legend()
+
+	plt.rcParams['font.size'] = 17.0
+	plt.rcParams['font.weight'] = 'bold'
+	params = {'linewidth': 2.0, 'markersize': 12}
+
+	fig, ax = plt.subplots(1, 1, figsize=(10, 7))
+	ax.plot(
+		epochs, loss, 'bo--',
+		linewidth=params['linewidth'],
+		markersize=params['markersize'],
+		label='Training'
+	)
+	ax.plot(
+		epochs, val_loss, 'rx-',
+		linewidth=params['linewidth'],
+		markersize=params['markersize'],
+		label='Validation'
+	)
+	ax.set_xlabel('Epoch', fontsize=20, fontdict=dict(weight='bold'))
+	ax.set_ylabel('Loss', fontsize=20, fontdict=dict(weight='bold'))
+	# title = fname.split('_')
+	# title = f"{title[0]} vs. {title[1]}"
+	# ax.set_title(title, fontsize=24, fontdict=dict(weight='bold'))
+	ax.legend()
 
 	accuracy = history.history['accuracy']
 	val_accuracy = history.history['val_accuracy']
@@ -229,8 +246,8 @@ def do_experiment(data_gen, models, duration, epochs, data_set, train=True, scal
 	results = model_evaluate(test_x, test_y, fname)
 
 	print(f"test loss: {results[0]}, test accuracy: {results[1]}\n\n")
-	logger.info(f"test loss: {results[0]}, test accuracy: {results[1]}\n\n")
-	# display(history, fname)
+	logger.info(f"test loss: {results[0]}, test accuracy: {results[1]}")
+	#display(history, fname)
 
 	return (train_x, train_y, valid_x, valid_y, test_x, test_y), (model, history, results)
 
@@ -240,8 +257,8 @@ if __name__ == '__main__':
 	if tf.test.is_gpu_available('gpu'):
 		print('GPU is available')
 
-	data_set = ['Normal', 'Formaldehyde_0_1_ppm']
-	duration = 1
+	data_set = ['Benzen_0_1_ppm', 'Formaldehyde_0_1_ppm']
+	duration = 30
 
 	models = {
 		0: simple_lstm,
@@ -258,4 +275,4 @@ if __name__ == '__main__':
 		1: load_data.profile_timeseries_dataset
 	}
 
-	data, model = do_experiment(data_gen[1], models[3], duration=duration, epochs=1, data_set=data_set, scaling=True)
+	data, model = do_experiment(data_gen[0], models[3], duration=duration, epochs=150, data_set=data_set, scaling=True)
