@@ -6,6 +6,8 @@ import tensorflow as tf
 import load_data
 from transformer import TransformerEncoder
 import logging.config
+from tensorflow import keras
+
 
 logging.config.fileConfig('./logging.ini', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
@@ -143,9 +145,11 @@ def model_train(model, train_x, train_y, valid_x, valid_y, fname, epochs=30, nca
 	]
 
 	if ncategory == 2:
-		model.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
+		model.compile(optimizer='rmsprop', loss='binary_crossentropy',
+					  metrics=['accuracy'])
 	else:
-		model.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+		model.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy',
+					  metrics=['accuracy'])
 	history = model.fit(train_x, train_y,
 						batch_size=128,
 						epochs=epochs,
@@ -173,6 +177,7 @@ def model_evaluate(test_x, test_y, fname):
 		except IOError as err:
 			print("Model loading failure", err)
 
+	print('Model is being evaluated.\n\n')
 	results = model.evaluate(test_x, test_y)
 
 	# # result record
@@ -229,7 +234,7 @@ def do_experiment(data_gen, models, duration, epochs, data_set, train=True, scal
 	results = model_evaluate(test_x, test_y, fname)
 
 	print(f"test loss: {results[0]}, test accuracy: {results[1]}\n\n")
-	logger.info(f"test loss: {results[0]}, test accuracy: {results[1]}\n\n")
+	logger.info(f"test loss: {results[0]}, test accuracy: {results[1]}")
 	# display(history, fname)
 
 	return (train_x, train_y, valid_x, valid_y, test_x, test_y), (model, history, results)
@@ -241,21 +246,33 @@ if __name__ == '__main__':
 		print('GPU is available')
 
 	data_set = ['Normal', 'Formaldehyde_0_1_ppm']
-	duration = 1
+	duration = 30 #(second)
 
-	models = {
-		0: simple_lstm,
-		1: densely_connected,
-		2: conv_1d,
-		3: lstm,
-		4: gru,
-		5: bidirectional_lstm,
-		6: transformer
-	}
+	ncategory = len(data_set)
+	train_x, train_y, valid_x, valid_y, test_x, test_y \
+		= load_data.som_timeseries_dataset(data_set, duration=duration, scaling=True)
 
-	data_gen = {
-		0: load_data.som_timeseries_dataset,
-		1: load_data.profile_timeseries_dataset
-	}
+	fname = 'test.h5'
 
-	data, model = do_experiment(data_gen[1], models[3], duration=duration, epochs=1, data_set=data_set, scaling=True)
+	# Model training
+	model = lstm(train_x.shape[1], train_x.shape[-1], ncategory=ncategory)
+	history = model_train(model, train_x, train_y, valid_x, valid_y, fname, epochs=30, ncategory=ncategory)
+
+	# Model testing
+	results, model = model_evaluate(test_x, test_y, fname)
+	# models = {
+	# 	0: simple_lstm,
+	# 	1: densely_connected,
+	# 	2: conv_1d,
+	# 	3: lstm,
+	# 	4: gru,
+	# 	5: bidirectional_lstm,
+	# 	6: transformer
+	# }
+	#
+	# data_gen = {
+	# 	0: load_data.som_timeseries_dataset,
+	# 	1: load_data.profile_timeseries_dataset
+	# }
+	#
+	# data, model = do_experiment(data_gen[1], models[3], duration=duration, epochs=1, data_set=data_set, scaling=True)

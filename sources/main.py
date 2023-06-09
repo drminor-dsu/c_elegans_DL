@@ -1,5 +1,7 @@
 import os
 import pathlib
+import time
+import socket
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -60,26 +62,51 @@ dnn_models = {
 }
 
 # Selection of data type: SOM pattern or Bls profile
+"""
+	HMM 모델은 별도의 데이터 생성기 사용
+	두 가지 데이터 생성기는 DNN을 위한 것
+"""
 data_gen = {
 	0: load_data.som_timeseries_dataset,
 	1: load_data.profile_timeseries_dataset
 }
 
 
-def hmm_experiments(pollutants, tinter_list, epochs)->'list':
+def hmm_experiments(pollutants, observations, epochs) -> '(list, dict, dict, dict)':
+	"""
+	pollutants 를 대상으로 각 observations 동안 HMM 모델을 학습시키고
+	accuracy, recall, precision, f1 계산
+	accuracy와 달리 recall, precision, f1은 positive를 무엇으로 볼 것인가에 따라
+	달리 계산되므로 모든 chemical을 대상으로 계산
+
+	:param pollutants:
+	:param observations:
+	:param epochs:
+	:return:
+	"""
 	# HMM experiments
 	hmm_accuracy = []
-	for du in tinter_list:
+	hmm_recall = defaultdict(list)
+	hmm_precision = defaultdict(list)
+	hmm_f1 = defaultdict(list)
+
+	for du in observations:
 		logger.info(f'Observation interval: {du}')
 		print(f'Observation interval: {du}')
 		train_x, train_y, test_x, test_y = load_data.timeseries_for_hmm(pollutants, duration=du)
-		models_dict = eh.model_training(train_x, du, n_iter=epochs, save=True)
+		models_dict = eh.model_training(train_x, du, n_iter=epochs, save=True) # models for normal + chemicals
 		predict_dict = eh.predict(models_dict, test_x)
-		accuracy, support = eh.metrics(0, predict_dict)
+		accuracy, recall, precision, f1 = eh.metrics(0, predict_dict)
 		hmm_accuracy.append(accuracy)
-		logger.info(f'HMM Accuracy {du}: {accuracy}\n\n')
+		for key in recall.keys():
+			hmm_recall[key] = recall[key]
+			hmm_precision = precision[key]
+			hmm_f1 = f1[key]
 
-	return hmm_accuracy
+		logger.info(f'HMM Accuracy {du}: {accuracy} {recall} {precision} {f1}\n\n')
+		print(f'HMM Accuracy {du}: {accuracy} {recall} {precision} {f1}\n\n')
+
+	return hmm_accuracy, hmm_recall, hmm_precision, hmm_f1
 
 
 def dnn_experiments(dnns, data_type, pollutants, tinter_list, epochs, train=True, scaling=True)-> 'list of list':
@@ -115,6 +142,7 @@ def dnn_experiments(dnns, data_type, pollutants, tinter_list, epochs, train=True
 			)
 			model_accuracy.append(model[2][1]) #
 			logger.info(f'{dnn_models[model_id].__name__} Accuracy {du}: {model[2][1]}\n\n')
+			print(f'{dnn_models[model_id].__name__} Accuracy {du}: {model[2][1]}\n\n')
 		accuracy.append(model_accuracy)
 
 	return accuracy
@@ -142,7 +170,7 @@ def display(data):
 	ax.plot(
 		ticks, lstm, 'ko-',
 		linewidth=params['linewidth'], markersize=params['markersize'],
-		label='Long Short-Term Memory'
+		label='Long Short-Term fname = '_'.join([short_cut[p] for p in pollutants])Memory'
 	)
 	ax.set_xlabel('Duration', fontsize=20, fontdict=dict(weight='bold'))
 	ax.set_ylabel('Accuracy', fontsize=20, fontdict=dict(weight='bold'))
@@ -151,26 +179,29 @@ def display(data):
 	ax.legend()
 
 
+# For accuracy metrics
 if __name__ == '__main__':
-	tinter_list = [180] #[30, 60, 90, 120, 150] #, 180]  # observation interval(secs)s to predict the water condition
-	pollutants = ['Normal', 'Formaldehyde_0_1_ppm']
+	observations = [30, 60, 90, 120, 150, 180]  # observation interval(secs)s to predict the water condition
+	pollutants = ['Normal', 'Formaldehyde_0_1_ppm']#, 'Benzen_0_1_ppm']
 	epochs = 30
 	dnns = [3] # list of dnn_models
+
+	num_experiments = 3 # 총 실험 횟수 -> 전체 실험의 평균 계산을 위해
+	hmm = False
+
 	accuracy = defaultdict(list)
-	num_experiments = 2 # 총 실험 횟수 -> 전체 실험의 평균 계산을 위해
-	hmm = True
 
 	for _ in range(num_experiments):
 		if hmm: # switch to include running hmm experiments
 			print(f"{'='*10} HMM training start! {'='*10}")
-			hmm_accuracy = hmm_experiments(pollutants, tinter_list, epochs=epochs)
+			hmm_accuracy = hmm_experiments(pollutants, observations, epochs=epochs)
 			accuracy['hmm'].append(np.array(hmm_accuracy))
-		# print(f"{'='*10} DNN training start! {'='*10}")
-		# dnn_accuracy = dnn_experiments(dnns, 0, pollutants, tinter_list, epochs=epochs)
-		# for i, acc in enumerate(dnn_accuracy):
-		# 	accuracy[dnn_models[dnns[i]].__name__].append(np.array(acc))
+		print(f"{'='*10} DNN training start! {'='*10}")
+		dnn_accuracy = dnn_experiments(dnns, 0, pollutants, observations, epochs=epochs)
+		for i, acc in enumerate(dnn_accuracy):
+			accuracy[dnn_models[dnns[i]].__name__].append(np.array(acc))
 
-	avg_accuracy = []
+	avg_accuracy = []        
 	for m in accuracy.keys():
 		avg_accuracy.append(np.mean(np.asarray(accuracy[m]), axis=0))
 
@@ -178,15 +209,16 @@ if __name__ == '__main__':
 	if hmm:
 		index.append('hmm')
 	index += [dnn_models[d].__name__ for d in dnns]
-	df = pd.DataFrame(avg_accuracy, columns=tinter_list, index=index)
+	df = pd.DataFrame(avg_accuracy, columns=observations, index=index)
 	fname = '_'.join([short_cut[p] for p in pollutants])
 	fname += '_'
 	if hmm:
 		fname += 'hmm_'
 	fname += '_'.join([dnn_models[d].__name__ for d in dnns])
-	fname += '_accuracy'
-	fname += '.csv'
+	fname += '_accuracy_' + time.strftime('%Y%m%d%H%M', time.localtime()) + '_'\
+			+ socket.gethostbyname(socket.gethostbyname()).split('.')[-1] + '.csv'
 	# fname = os.path.join('../result', fname)
 	# if os.path.exists(fname):
 	# 	os.remove(fname)
 	df.to_csv(os.path.join('../results', fname), mode='a')
+

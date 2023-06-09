@@ -1,7 +1,7 @@
 import os
 import sys
 import pathlib
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 import numpy as np
 import pandas as pd
@@ -37,6 +37,17 @@ target = {
 	'Toluen_0_5_ppm': 6
 }
 
+short_cut = {
+	'Formaldehyde_0_1_ppm': 'Form_01',
+	'Formaldehyde_0_5_ppm': 'Form_05',
+	'Normal'              : 'Normal',
+	'Benzen_0_1_ppm'      : 'Benzen_01',
+	'Benzen_0_5_ppm'      : 'Benzen_05',
+	'Toluen_0_1_ppm'      : 'Toluen_01',
+	'Toluen_0_5_ppm'      : 'Toluen_05'
+}
+
+save_path = os.path.join(pathlib.Path(__file__).parents[1], 'som_sequence')
 data_path = os.path.join(pathlib.Path(__file__).parents[1], 'data')
 # '../../data/'
 train_rate = 0.6  # the ratio of training data
@@ -49,7 +60,7 @@ def timeseries_for_hmm(
 		start=10,
 		end=40,
 		duration=30
-	) -> 'train_x, train_y, valid_x, valid_y, test_x, test_y: dictionary':
+	) -> 'train_x, train_y, test_x, test_y: dictionary':
 	'''
 	Hidden Markov Model을 위한 데이터 생성
 	HMM은 오염물질 각각에 대해 별개의 모델을 만들어 학습해야 하므로 딕셔너리를 활용해 각 화학물질별 데이터를 분리해서 생
@@ -58,7 +69,7 @@ def timeseries_for_hmm(
 	:param start:
 	:param end:
 	:param duration:
-	:return: train_x, train_y, valid_x, valid_y, test_x, test_y: dictionary
+	:return: train_x, train_y, test_x, test_y: dictionary
 
 	'''
 
@@ -111,9 +122,9 @@ def timeseries_for_hmm(
 		logger.info(f'{pollutants[pol_id]} -> Number of frames: {n_frame}, Number of samples: {n_sample}')
 		pol_id += 1
 
-	train_x = dict();
+	train_x = dict()
 	train_y = dict()
-	test_x = dict();
+	test_x = dict()
 	test_y = dict()
 
 	for key in data.keys():
@@ -133,10 +144,11 @@ def som_timeseries_dataset(
 		start=10,
 		end=40,
 		duration=30,
+		save=True,
 		scaling=True
 	) -> 'train_x, train_y, valid_x, valid_y, test_x, test_y':
 	"""
-
+	SOM pattern sequence data set for Deep learning model
 	:param pollutants:
 	:param start:
 	:param end:
@@ -229,6 +241,18 @@ def som_timeseries_dataset(
 	test_x = np.expand_dims(test_x, axis=2).astype(np.float32)
 	logger.info(f"train: {train_y.shape}, valid: {valid_y.shape}, test: {test_y.shape}")
 
+	if save:
+		fname = '_'.join([short_cut[p] for p in pollutants])
+		print(f'{fname} is saved')
+		samples = np.concatenate([train_x.reshape(train_x.shape[0], -1), valid_x.reshape(valid_x.shape[0], -1),
+							   test_x.reshape(test_x.shape[0], -1)])
+		labels = np.concatenate([train_y, valid_y, test_y])
+		df = pd.DataFrame(samples)
+		df[train_x.shape[1]] = labels
+		file_path = save_path + f'/{fname}_du_{duration}.csv'
+		df.to_csv(file_path)
+
+
 	return train_x, train_y, valid_x, valid_y, test_x, test_y
 
 
@@ -241,7 +265,7 @@ def profile_timeseries_dataset(
 	) -> 'train_x, train_y, valid_x, valid_y, test_x, test_y':
 	"""
 	오염 물질들의 데이터 파일 전체를 keras.utils.timeseries_dataset_from_array를 이용해 time series dataset 으로 변환
-	train_x, train_y, valid_x, valid_y, test_x, test_y 반
+	train_x, train_y, valid_x, valid_y, test_x, test_y 반환
 
 	:param pollutants: list
 		ex) ['Formaldehyde_0_1_ppm', 'Normal']
@@ -303,11 +327,11 @@ def profile_timeseries_dataset(
 		logger.info(f'{pollutant} -> Number of frames: {n_frame}, Number of samples: {n_sample}')
 		i += 1
 
-	train_x = [];
+	train_x = []
 	train_y = []
-	valid_x = [];
+	valid_x = []
 	valid_y = []
-	test_x = [];
+	test_x = []
 	test_y = []
 
 	for key in data.keys():
@@ -341,6 +365,6 @@ def profile_timeseries_dataset(
 	return train_x, train_y, valid_x, valid_y, test_x, test_y
 
 
-# if __name__ == '__main__':
-# 	train_x, train_y, valid_x, valid_y, test_x, test_y = som_timeseries_dataset(['Formaldehyde_0_1_ppm', 'Benzen_0_1_ppm'])
-# train_x, train_y, valid_x, valid_y, test_x, test_y = profile_timeseries_dataset(['Formaldehyde_0_1_ppm', 'Benzen_0_1_ppm'])
+if __name__ == '__main__':
+	train_x, train_y, valid_x, valid_y, test_x, test_y = som_timeseries_dataset(['Normal', 'Formaldehyde_0_1_ppm'])
+	#train_x, train_y, valid_x, valid_y, test_x, test_y = profile_timeseries_dataset(['Normal'])

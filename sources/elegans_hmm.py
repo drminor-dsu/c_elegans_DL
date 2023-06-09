@@ -5,6 +5,7 @@ sys.path.extend('./')
 import pathlib
 import numpy as np
 import pandas as pd
+from collections import OrderedDict
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, accuracy_score
@@ -30,14 +31,14 @@ dfiles = {
 
 def split_input_data_from_files(*kinds, test_size=0.2):
     print('norm data reading')
-    data_dict = {}
+    data_dict = OrderedDict()
     for chemical in kinds:
         print('Loading {}'.format(chemical))
         seq = pd.read_csv(os.path.join(droot, dfiles[chemical]), dtype=np.int32, header=None)
         data_dict[chemical] = seq
 
-    train_dict = {}
-    test_dict = {}
+    train_dict = OrderedDict()
+    test_dict = OrderedDict()
     for d in data_dict:
         train, test = train_test_split(data_dict[d], test_size=test_size, random_state=42)
         train_dict[d] = train
@@ -47,8 +48,8 @@ def split_input_data_from_files(*kinds, test_size=0.2):
 
 
 def split_input_data_from_dicts(data_dict, test_size=0.2):
-    train_dict = {}
-    test_dict = {}
+    train_dict = OrderedDict()
+    test_dict = OrderedDict()
     for d in data_dict:
         train, test = train_test_split(data_dict[d], test_size=test_size, random_state=42)
         train_dict[d] = train
@@ -74,7 +75,7 @@ def build_and_save_hmm(x, label, du, n_components=5, n_iter=10, save=False):
 
 def model_training(train_dict, du, n_components=5, n_iter=10, save=False):
 
-    model_dicts = {}
+    model_dicts = OrderedDict()
     for chemical in train_dict:
         print('Training {} HMM'.format(chemical))
         hmm = build_and_save_hmm(train_dict[chemical], chemical, du, n_components=n_components, n_iter=n_iter, save=save)
@@ -91,21 +92,36 @@ def load_hmm(label, du):
         return model
 
 
-def model_dump(*kinds):
-    model_dicts = {}
+def model_dump(kinds, duration) -> dict:
+    """
+    Hidden Markov Model 을 반환함
+    :param duration:
+    :param kinds: load_dat
+    :return:
+    """
+    model_dicts = OrderedDict()
     for chemical in kinds:
-        print('Loading {}} HMM'.format(chemical))
-        hmm = load_hmm(chemical)
+        print(f'Loading {chemical} HMM')
+        hmm = load_hmm(chemical, duration)
         model_dicts[chemical] = hmm
 
     return model_dicts
 
 
-def predict(model_dict, test_dict):
-    predict_dict = {}
+def predict(model_dict: dict, test_dict: dict):
+    """
+    각 클래스별로 학습된 model을 이용해 각 클래스별로 생성된 test data를 대상으로 score(각 모델별 확률)를
+    계산하고 이중 가장 score 값이 큰 클래스로 소속 판단
+
+    :param model_dict: 분류 대상 클래스별 학습된 모델
+    :param test_dict: 클래스별로 생성된 테스트 데이터
+    :return:
+    """
+    predict_dict = OrderedDict()
     for chemical in test_dict:
+        # chemical별 테스트 데이터 대상으로 모델 예측
         print('Predicting {}'.format(chemical))
-        score_dict = {}
+        score_dict = {} # 모델별로 테스트 샘플을 대상으로 계산된 score 값 저장
         for hmm in model_dict:
             score = []
             for sample in test_dict[chemical]:
@@ -144,7 +160,7 @@ def metrics(num, predict_dict):
 
     #print_metrics(num, conf_mat, accuracy, precision, recall, f1, support, list(predict_dict.keys()))
 
-    return accuracy, support
+    return accuracy, recall, precision, f1
 
 
 def print_metrics(num, conf_mat, accuracy, precision, recall, f1, support, chemicals):
