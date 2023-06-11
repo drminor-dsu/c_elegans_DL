@@ -170,7 +170,7 @@ def display(data):
 	ax.plot(
 		ticks, lstm, 'ko-',
 		linewidth=params['linewidth'], markersize=params['markersize'],
-		label='Long Short-Term fname = '_'.join([short_cut[p] for p in pollutants])Memory'
+		label='Long Short-Term Memory'
 	)
 	ax.set_xlabel('Duration', fontsize=20, fontdict=dict(weight='bold'))
 	ax.set_ylabel('Accuracy', fontsize=20, fontdict=dict(weight='bold'))

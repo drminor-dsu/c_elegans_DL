@@ -4,6 +4,7 @@ import os
 import pathlib
 import time
 import socket
+import csv
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -63,7 +64,7 @@ data_gen = {
 }
 
 
-def hmm_predicts(pols: list, duration: int = 30)-> 'tuple of np.array':
+def hmm_predicts(pols: list, duration: int = 30)->'tuple of np.array':
 	"""
 	duration 동안의 7가지 패턴으로 구성된 테스트 데이터를 생성하고 학습된 HMM 모델을 불러 와서 예측
 
@@ -82,24 +83,26 @@ def hmm_predicts(pols: list, duration: int = 30)-> 'tuple of np.array':
 	return y_true, y_pred
 
 
-def dnn_predicts_SOM_pattern(model_name: 'function',
-							 pols: list,
-							 data_gen: object,
-							 duration: int = 30)-> 'tuple of np.array':
+def dnn_predicts_SOM_pattern(model_name:'function',
+							 pols:list,
+							 data_gen:object,
+							 duration:int=30,
+							 epochs:int=30)-> 'tuple of np.array':
 	"""
 	duration 동안의 7가지 패턴으로 구성된 테스트 데이터를 생성하고
 	학습된 deep learning 모델을 불러 와서 예측
 
 	:param model: str
 		h5 format 형태의 저장된 모델 path
-	:param pols:
-	:param duration:
-	:return:
+	:param pols: list
+	:param duration: defalut value 30
+		관찰 시간
+	:param epochs: 학습 횟수
+	:return: tuple of np.array
 	"""
 	train_x, train_y, valid_x, valid_y, test_x, test_y = load_data.som_timeseries_dataset(pols, duration=duration)
 	d_names = [short_cut[name] for name in pols]
 	scale = 'scale_1' #if scaling else 'scale_0'
-	epochs = 30
 	fname = '_'.join(d_names) + f'_du_{duration}_ep_{epochs}_{model_name.__name__}_{data_gen.__name__.split("_")[0]}_{scale}.h5'
 	fbodies = fname.split('_')
 	nclasses = len(pols) # the number of classes
@@ -108,7 +111,6 @@ def dnn_predicts_SOM_pattern(model_name: 'function',
 	if tf.test.is_gpu_available('gpu'):
 		print('GPU is available')
 
-	#fname = 'test.h5'
 	if 'transformer' in fbodies:
 		# print('Model: Transformer ')
 		try:
@@ -129,25 +131,67 @@ def dnn_predicts_SOM_pattern(model_name: 'function',
 		except IOError as err:
 			print("Model loading failure", err)
 
-	print('Model is being evaluated.\n\n')
+	print(f'{model_name.__name__} is being evaluated.\n\n')
 
 	y_true = test_y
-	print(model.evaluate(test_x, test_y))
+	#print(model.evaluate(test_x, test_y))
 	if nclasses == 2:
 		y_pred = (model.predict(test_x) > 0.5).flatten()
 	else:
 		y_pred = np.argmax(model.predict(test_x), axis=1)
-	#y_pred = np.array([0 if y < 0.5 else 1 for y in y_pred_2dim.flatten()])
 
-	return y_true, y_pred, model
+	return y_true, y_pred
+
 
 def metrics(y_true: np.array, y_pred: np.array):
+	"""
+	Accuracy, Recall, Precision, and F1 score are returned.
+	:param y_true : np.array
+	:param y_pred : np.array
+	:return:
+	accuracy : list
+	recall : list
+	precision : list
+	f1 : list
+	"""
 	accuracy = accuracy_score(y_true, y_pred)
 	recall = recall_score(y_true, y_pred, average=None)
 	precision = precision_score(y_true, y_pred, average=None)
 	f1 = f1_score(y_true, y_pred, average=None)
 
 	return accuracy, recall, precision, f1
+
+
+def do_job_HMM(pollutants:list, observations:list, num:int=3)->'tuple of ndarray':
+	# epochs = 30
+	# dnns = [3] # list of dnn_models
+	# accuracy = defaultdict(list)
+	num_experiments = num  # 총 실험 횟수 -> 전체 실험의 평균 계산을 위해
+	# hmm = True
+
+	final_acc = list()
+	final_re = list()
+	final_pre = list()
+	final_f1 = list()
+	for n in range(num_experiments):
+		temp_acc = list()
+		temp_re = list()
+		temp_pre = list()
+		temp_f1 = list()
+		for du in observations:
+			print(f'#{n + 1}: prediction starts for duration {du}')
+			y_true, y_pred = hmm_predicts(pollutants, duration=du)
+			accuracy, recall, precision, f1 = metrics(y_true, y_pred)
+			temp_acc.append(accuracy)
+			temp_re.append(recall)
+			temp_pre.append(precision)
+			temp_f1.append(f1)
+		final_acc.append(temp_acc)
+		final_re.append(temp_re)
+		final_pre.append(temp_pre)
+		final_f1.append(temp_f1)
+
+	return np.asarray(final_acc), np.asarray(final_re), np.asarray(final_pre), np.asarray(final_f1)
 
 
 if __name__ == '__main__':
@@ -163,13 +207,14 @@ if __name__ == '__main__':
 	final_re = list()
 	final_pre = list()
 	final_f1 = list()
-	for _ in range(num_experiments):
+	for n in range(num_experiments):
 		temp_acc = list()
 		temp_re = list()
 		temp_pre = list()
 		temp_f1 = list()
 		for du in observations:
-			y_true, y_pred = hmm_predicts(pollutants, duration=du)
+			print(f'#{n+1}: prediction starts for duration {du}')
+			y_true, y_pred = dnn_predicts_SOM_pattern(dnn_models[3], pollutants, data_gen[0])
 			accuracy, recall, precision, f1 = metrics(y_true, y_pred)
 			temp_acc.append(accuracy)
 			temp_re.append(recall)
@@ -180,10 +225,16 @@ if __name__ == '__main__':
 		final_pre.append(temp_pre)
 		final_f1.append(temp_f1)
 
-	print(final_acc)
-	print(final_re)
-	print(final_pre)
-	print(final_f1)
+	scores = dict()
+	scores.update('accuracy', np.asarray(final_acc))
+	scores.update('recall', np.asarray(final_re))
+	scores.update('precision', np.asarray(final__pre))
+	scores.update('f1_score', np.asarray(final__f1))
+
+	with open('./metrics_lstm.csv', 'w') as fp:
+		writer = csv.DictWriter(fp, fieldnames=metrics.keys())
+		writer.writeheader()
+		writer.writerow(metrics)
 
 	### Very important facts ###
 	# SOM 분석을 할 때마다 데이터에서 추출한 패턴이 새로 생성되므로

@@ -241,17 +241,18 @@ def som_timeseries_dataset(
 	test_x = np.expand_dims(test_x, axis=2).astype(np.float32)
 	logger.info(f"train: {train_y.shape}, valid: {valid_y.shape}, test: {test_y.shape}")
 
+	save = False
 	if save:
 		fname = '_'.join([short_cut[p] for p in pollutants])
-		print(f'{fname} is saved')
 		samples = np.concatenate([train_x.reshape(train_x.shape[0], -1), valid_x.reshape(valid_x.shape[0], -1),
 							   test_x.reshape(test_x.shape[0], -1)])
 		labels = np.concatenate([train_y, valid_y, test_y])
 		df = pd.DataFrame(samples)
 		df[train_x.shape[1]] = labels
 		file_path = save_path + f'/{fname}_du_{duration}.csv'
+		print(f'{file_path} is saved')
+		logger.info(f'{file_path} is saved.')
 		df.to_csv(file_path)
-
 
 	return train_x, train_y, valid_x, valid_y, test_x, test_y
 
