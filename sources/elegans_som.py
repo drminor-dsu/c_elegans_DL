@@ -11,7 +11,8 @@ from sklearn.metrics import davies_bouldin_score
 from sklearn.datasets import make_classification
 # from somlearn import SOM
 
-data_root = '/home/drminor/PycharmProjects/elegans/data/'
+data_root = os.path.join(pathlib.Path(__file__).parents[1], 'data/')
+
 directory = {'Form_01': 'Formaldehyde_0_1_ppm',
                  'Form_05': 'Formaldehyde_0_5_ppm',
                  'Normal': 'Normal',
