@@ -184,7 +184,7 @@ if __name__ == '__main__':
 	observations = [30, 60, 90, 120, 150, 180]  # observation interval(secs)s to predict the water condition
 	pollutants = ['Normal', 'Formaldehyde_0_1_ppm']#, 'Benzen_0_1_ppm']
 	epochs = 30
-	dnns = [3] # list of dnn_models
+	dnns = [5] # list of dnn_models
 
 	num_experiments = 3 # 총 실험 횟수 -> 전체 실험의 평균 계산을 위해
 	hmm = False
@@ -215,8 +215,9 @@ if __name__ == '__main__':
 	if hmm:
 		fname += 'hmm_'
 	fname += '_'.join([dnn_models[d].__name__ for d in dnns])
-	fname += '_accuracy_' + time.strftime('%Y%m%d%H%M', time.localtime()) + '_'\
-			+ socket.gethostbyname(socket.gethostbyname()).split('.')[-1] + '.csv'
+	fname += '_accuracy_' + time.strftime('%Y%m%d%H%M', time.localtime()) \
+			 + socket.gethostbyname(socket.gethostname()).split('.')[-1] + '.csv'
+
 	# fname = os.path.join('../result', fname)
 	# if os.path.exists(fname):
 	# 	os.remove(fname)

@@ -77,8 +77,10 @@ def simple_lstm(sequences, features, ncategory=2):
 
 def lstm(sequences, features, ncategory=2):
 	inputs = tf.keras.Input(shape=(sequences, features))
-	x = tf.keras.layers.LSTM(27, return_sequences=True)(inputs)
-	x = tf.keras.layers.LSTM(27)(x)
+	x = tf.keras.layers.LSTM(32, return_sequences=True)(inputs)
+	x = tf.keras.layers.LSTM(32, return_sequences=True)(x)
+	x = tf.keras.layers.LSTM(16)(x)
+	x = tf.keras.layers.Dropout(0.5)(x)
 	if ncategory == 2:
 		outputs = tf.keras.layers.Dense(1, activation='sigmoid')(x)
 	else:
@@ -90,8 +92,9 @@ def lstm(sequences, features, ncategory=2):
 
 def gru(sequences, features, ncategory=2):
 	inputs = tf.keras.Input(shape=(sequences, features))
-	x = tf.keras.layers.GRU(27, return_sequences=True)(inputs)
-	x = tf.keras.layers.GRU(27)(x)
+	x = tf.keras.layers.GRU(32, return_sequences=True)(inputs)
+	x = tf.keras.layers.GRU(32, return_sequences=True)(x)
+	x = tf.keras.layers.GRU(16)(x)
 	x = tf.keras.layers.Dropout(0.5)(x)
 	if ncategory == 2:
 		outputs = tf.keras.layers.Dense(1, activation='sigmoid')(x)
@@ -100,12 +103,13 @@ def gru(sequences, features, ncategory=2):
 	model = tf.keras.Model(inputs, outputs)
 
 	return model
-
 
 def bidirectional_lstm(sequences, features, ncategory=2):
+	print("Bi-Directional LSTM training start!")
 	inputs = tf.keras.Input(shape=(sequences, features))
-	x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(27, return_sequences=True))(inputs)
-	x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(27))(x)
+	x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32, return_sequences=True))(inputs)
+	x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32, return_sequences=True))(x)
+	x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(16))(x)
 	x = tf.keras.layers.Dropout(0.5)(x)
 	if ncategory == 2:
 		outputs = tf.keras.layers.Dense(1, activation='sigmoid')(x)
@@ -114,6 +118,21 @@ def bidirectional_lstm(sequences, features, ncategory=2):
 	model = tf.keras.Model(inputs, outputs)
 
 	return model
+
+# def bidirectional_lstm(sequences, features, ncategory=2):
+# 	print("Bi-Directional LSTM training start!")
+# 	inputs = tf.keras.Input(shape=(sequences, features))
+# 	x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32, return_sequences=True))(inputs)
+# 	x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(16, return_sequences=True))(inputs)
+# 	x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(16))(x)
+# 	x = tf.keras.layers.Dropout(0.5)(x)
+# 	if ncategory == 2:
+# 		outputs = tf.keras.layers.Dense(1, activation='sigmoid')(x)
+# 	else:
+# 		outputs = tf.keras.layers.Dense(ncategory, activation='softmax')(x)
+# 	model = tf.keras.Model(inputs, outputs)
+#
+# 	return model
 
 
 def transformer(sequences, features, ncategory=2):
